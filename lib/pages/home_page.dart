@@ -3,7 +3,7 @@ import 'package:zoidmail/auth/login_page.dart';
 import 'package:zoidmail/pages/Main_page.dart';
 import 'package:zoidmail/pages/blogs/blogs.dart';
 import 'package:zoidmail/pages/contact_us.dart';
-import 'package:zoidmail/pages/settings.dart';
+import 'package:zoidmail/pages/settings/settings.dart';
 import 'package:zoidmail/service/auth_service.dart';
 import 'package:zoidmail/widgets/widgets.dart';
 
