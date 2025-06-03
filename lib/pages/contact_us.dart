@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:zoidmail/service/database_service.dart';
 
 class ContactUsPage extends StatefulWidget {
   const ContactUsPage({super.key});
@@ -13,6 +14,7 @@ class _ContactUsPageState extends State<ContactUsPage> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _messageController = TextEditingController();
   bool _isNotRobot = false;
+  bool _isSubmitting = false;
 
   @override
   void dispose() {
@@ -20,6 +22,83 @@ class _ContactUsPageState extends State<ContactUsPage> {
     _emailController.dispose();
     _messageController.dispose();
     super.dispose();
+  }
+
+  // Form validation
+  bool _validateForm() {
+    if (_subjectController.text.trim().isEmpty) {
+      _showSnackBar("Please enter a subject", Colors.red);
+      return false;
+    }
+    if (_emailController.text.trim().isEmpty) {
+      _showSnackBar("Please enter your email", Colors.red);
+      return false;
+    }
+    if (_messageController.text.trim().isEmpty) {
+      _showSnackBar("Please enter your message", Colors.red);
+      return false;
+    }
+    if (!_isNotRobot) {
+      _showSnackBar("Please confirm you are not a robot", Colors.red);
+      return false;
+    }
+    return true;
+  }
+
+  // Submit form
+  void _submitForm() async {
+    if (!_validateForm()) return;
+
+    setState(() {
+      _isSubmitting = true;
+    });
+
+    try {
+      DatabaseService databaseService = DatabaseService();
+
+      bool success = await databaseService.submitContactForm(
+        subject: _subjectController.text.trim(),
+        email: _emailController.text.trim(),
+        message: _messageController.text.trim(),
+      );
+
+      if (success) {
+        _showSnackBar(
+            "Message submitted successfully! We'll get back to you soon.",
+            Colors.green);
+        _clearForm();
+      } else {
+        _showSnackBar(
+            "Failed to submit message. Please try again.", Colors.red);
+      }
+    } catch (e) {
+      _showSnackBar("An error occurred. Please try again.", Colors.red);
+    } finally {
+      setState(() {
+        _isSubmitting = false;
+      });
+    }
+  }
+
+  // Clear form
+  void _clearForm() {
+    _subjectController.clear();
+    _emailController.clear();
+    _messageController.clear();
+    setState(() {
+      _isNotRobot = false;
+    });
+  }
+
+  // Show snackbar
+  void _showSnackBar(String message, Color backgroundColor) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: backgroundColor,
+        duration: const Duration(seconds: 3),
+      ),
+    );
   }
 
   @override
@@ -62,26 +141,29 @@ class _ContactUsPageState extends State<ContactUsPage> {
               controller: _subjectController,
               maxLength: 30,
               decoration: InputDecoration(
-                labelText: "Subject",
+                labelText: "Subject*",
                 counterText: "${_subjectController.text.length}/30",
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8.0),
                 ),
                 filled: true,
-                fillColor: Colors.white, // Light blue background
+                fillColor: Colors.white,
               ),
+              onChanged: (value) {
+                setState(() {}); // Update counter
+              },
             ),
             const SizedBox(height: 16),
             // Email Field
             TextField(
               controller: _emailController,
               decoration: InputDecoration(
-                labelText: "Your Email (If u need an answer)",
+                labelText: "Your Email* (Required for response)",
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8.0),
                 ),
                 filled: true,
-                fillColor: Colors.white, // Light blue background
+                fillColor: Colors.white,
               ),
               keyboardType: TextInputType.emailAddress,
             ),
@@ -91,12 +173,12 @@ class _ContactUsPageState extends State<ContactUsPage> {
               controller: _messageController,
               maxLines: 5,
               decoration: InputDecoration(
-                labelText: "Message",
+                labelText: "Message*",
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8.0),
                 ),
                 filled: true,
-                fillColor: Colors.white, // Light blue background
+                fillColor: Colors.white,
               ),
             ),
             const SizedBox(height: 16),
@@ -104,23 +186,25 @@ class _ContactUsPageState extends State<ContactUsPage> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Row(
-                  children: [
-                    Checkbox(
-                      value: _isNotRobot,
-                      onChanged: (value) {
-                        setState(() {
-                          _isNotRobot = value ?? false;
-                        });
-                      },
-                    ),
-                    const Text("I am not a robot"),
-                  ],
+                Expanded(
+                  child: Row(
+                    children: [
+                      Checkbox(
+                        value: _isNotRobot,
+                        onChanged: (value) {
+                          setState(() {
+                            _isNotRobot = value ?? false;
+                          });
+                        },
+                      ),
+                      const Expanded(
+                        child: Text("I am not a robot"),
+                      ),
+                    ],
+                  ),
                 ),
                 ElevatedButton(
-                  onPressed: () {
-                    // Add submit functionality here
-                  },
+                  onPressed: _isSubmitting ? null : _submitForm,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.blue,
                     foregroundColor: Colors.white,
@@ -128,9 +212,29 @@ class _ContactUsPageState extends State<ContactUsPage> {
                       borderRadius: BorderRadius.circular(20),
                     ),
                   ),
-                  child: const Text("SUBMIT"),
+                  child: _isSubmitting
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor:
+                                AlwaysStoppedAnimation<Color>(Colors.white),
+                          ),
+                        )
+                      : const Text("SUBMIT"),
                 ),
               ],
+            ),
+            const SizedBox(height: 16),
+            // Required fields note
+            const Text(
+              "* Required fields",
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.grey,
+                fontStyle: FontStyle.italic,
+              ),
             ),
           ],
         ),
